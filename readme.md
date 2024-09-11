@@ -1,6 +1,6 @@
-# Twitch Stream Recorder
+# Twitch Stream Saver
 
-A Python program that allows users to record Twitch streams programmatically without the need for screen recording. This tool leverages the Twitch GraphQL API and FFmpeg to capture and download streams in high quality.
+A Python program that allows users to record Twitch streams programmatically without the need for screen recording. This tool uses the Twitch GraphQL API and FFmpeg to capture and download streams.
 
 ## Requirements
 
