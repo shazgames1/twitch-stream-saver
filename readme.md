@@ -36,19 +36,26 @@ A Python program that allows users to record Twitch streams programmatically wit
 To record a Twitch stream, use the following command:
 
 ```bash
-python3 src/main.py <streamer_name> --quality <quality> --download
+python3 src/main.py <streamer_name> --quality <quality> --download --fps <fps>
 ```
 
 ## Command-Line Options
 
-- `<streamer_name>`: The Twitch username of the streamer you want to record.
-- `--quality <quality>`: Specify the desired quality of the stream (e.g., 720, 1080).
-- `--download`: Flag to indicate that the stream should be downloaded without asking the user.
+- `<streamer_name>`: The Twitch username or URL of the streamer you want to record.
+- `--quality <quality>`: (Optional) Specify the desired quality of the stream (Acceptable values are 160, 360, 480, 720, or 1080). If the desired quality not available, the highest quality of the stream will be used. If not provided, the highest quality of the stream will be used.
+- `--download`: (Optional) Flag to indicate that the stream should be downloaded without asking the user.
+- `--fps <fps>`: (Optional) Specify the desired frame rate for the output video. Acceptable values are 24, 30, or 60. If not provided, the original frame rate of the stream will be used.
 
-### Example
+### Examples
 
-To record the stream of the user `di_rubens` at `720`p quality, run:
+To record the stream of the user `di_rubens` at `720`p quality with a target frame rate of `30`, run:
 
 ```bash
-python3 src/main.py di_rubens --quality 720 --download
+python3 src/main.py di_rubens --quality 720 --download --fps 30
+```
+
+To record the stream using the URL of the streamer:
+
+```bash
+python3 src/main.py https://www.twitch.tv/di_rubens --download
 ```
