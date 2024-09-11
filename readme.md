@@ -5,7 +5,7 @@ A Python program that allows users to record Twitch streams programmatically wit
 ## Requirements
 
 - Python 3.6 or higher
-- FFmpeg (it should be in )
+- FFmpeg
 
 ## Installation
 
