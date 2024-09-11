@@ -47,7 +47,7 @@ python3 src/main.py <streamer_name> --quality <quality> --download
 
 ### Example
 
-To record the stream of the user `di_rubens` at 720p quality, run:
+To record the stream of the user `di_rubens` at `720`p quality, run:
 
 ```bash
 python3 src/main.py di_rubens --quality 720 --download

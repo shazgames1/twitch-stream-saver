@@ -4,6 +4,7 @@ import re
 import argparse
 import subprocess
 import logging
+import urllib.parse
 from urllib.request import HTTPError
 from dataclasses import dataclass
 from datetime import datetime
@@ -31,7 +32,7 @@ def ask_to_download():
     return response == "y"
 
 
-def get_output_file_path(username: str, resolution: Tuple[int, int]) -> Path:
+def get_output_file_path(username: str, resolution: Tuple[int, int], fps: int) -> Path:
     # Define the downloads folder path relative to the script's directory
     root_directory = Path(__file__).parent.parent
     downloads_folder = root_directory / "Downloads"
@@ -39,25 +40,39 @@ def get_output_file_path(username: str, resolution: Tuple[int, int]) -> Path:
     # Create the downloads folder if it doesn't exist
     downloads_folder.mkdir(parents=True, exist_ok=True)
 
-    filename = "{username} {timestamp} ({quality}p).mp4".format(
+    filename = "{username} {timestamp} ({quality}p{fps}).mp4".format(
         username=username,
         timestamp=datetime.now().strftime("%Y-%m-%d %H_%M"),
-        quality=str(resolution[1])
+        quality=str(resolution[1]),
+        fps=fps
     )
     full_path = downloads_folder / filename
 
     return full_path
 
 
-def download_stream(stream_url: str, output_file_path: Path):
+def download_stream(stream: StreamInfo, username: str, fps: Optional[int] = None):
+    # Base ffmpeg command
     ffmpeg_command = [
         "ffmpeg",
-        "-y",
-        "-i", stream_url,
-        "-c", "copy",
-        "-loglevel", "warning",
-        output_file_path
+        "-y",  # Override file if exists
+        "-i", stream.url,
+        "-loglevel", "warning"
     ]
+
+    # Determine if transcoding is required
+    transcoding_required = fps is not None and stream.frame_rate != fps
+
+    # If user desired fps is defined and not equal to stream fps, set the frame rate
+    # else copy the streams without reencoding
+    ffmpeg_command += ["-r",
+                       str(fps)] if transcoding_required else ["-c", "copy"]
+
+    # Determine output file path
+    output_file_fps = int(stream.frame_rate if fps is None else fps)
+    output_file_path = get_output_file_path(
+        username, stream.resolution, fps=output_file_fps)
+    ffmpeg_command.append(output_file_path)
 
     # Start the ffmpeg process
     process = subprocess.Popen(
@@ -65,7 +80,12 @@ def download_stream(stream_url: str, output_file_path: Path):
         stdin=subprocess.PIPE
     )
 
-    logging.info("Downloading video with ffmpeg")
+    logging.info("Downloading {quality}p{fps} video with ffmpeg {transcode} to {dest_path}".format(
+        quality=stream.resolution[1],
+        fps=output_file_fps,
+        transcode="with transcoding" if transcoding_required else "without transcoding",
+        dest_path=output_file_path
+    ))
 
     try:
         process.wait()
@@ -127,8 +147,8 @@ def get_streams_by_username(username: str) -> Optional[list[StreamInfo]]:
 
     m3u8_url = (
         f"https://usher.ttvnw.net/api/channel/hls/{username}.m3u8"
-        f"&sig={signature}&supported_codecs=av1,h264&token={value}"
-        "?allow_source=true&cdm=wv&fast_bread=true&platform=web"
+        f"?&sig={signature}&supported_codecs=av1,h264&token={value}"
+        "&allow_source=true&cdm=wv&fast_bread=true&platform=web"
         "&playlist_include_framerate=true&reassignments_supported=true"
         "&transcode_mode=cbr_v1"
     )
@@ -165,16 +185,22 @@ def main():
 
     parser = argparse.ArgumentParser(
         description="Extract Twitch username and preferred quality")
-    parser.add_argument("--quality", type=str, required=True,
-                        help="Preferred quality (1080, 720, 480, or 360)")
+    # Quality
+    parser.add_argument("--quality", type=int, choices=[160, 360, 480, 720, 1080],
+                        help="Preferred quality (1080, 720, 480, 360 or 160)")
+    # Force download
     parser.add_argument("--download", action="store_true",
                         help="Force download without asking for confirmation")
+    # FPS
+    parser.add_argument("--fps", type=int, choices=[24, 30, 60],
+                        help="Optional frame rate (24, 30, or 60)")
     parser.add_argument("username", type=str, help="Twitch username or URL")
 
     args = parser.parse_args()
 
     username = args.username
-    desired_quality = int(args.quality)
+    desired_quality = args.quality
+    fps = args.fps
     force_download = args.download
 
     streams = get_streams_by_username(username)
@@ -188,8 +214,7 @@ def main():
 
     # If user want to download stream, run ffmpeg else print stream url
     if force_download or ask_to_download():
-        output_file_path = get_output_file_path(username, stream.resolution)
-        download_stream(stream.url, output_file_path)
+        download_stream(stream, username=username, fps=fps)
     else:
         print(str(stream.resolution[1]) + "p: " + stream.url)
 
