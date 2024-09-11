@@ -3,6 +3,7 @@ import m3u8
 import re
 import argparse
 import subprocess
+import logging
 from urllib.request import HTTPError
 from dataclasses import dataclass
 from datetime import datetime
@@ -64,18 +65,18 @@ def download_stream(stream_url: str, output_file_path: Path):
         stdin=subprocess.PIPE
     )
 
-    print("Downloading video with ffmpeg")
+    logging.info("Downloading video with ffmpeg")
 
     try:
         process.wait()
     except KeyboardInterrupt:
-        print("\nStopping ffmpeg...")
+        logging.info("Stopping ffmpeg...")
 
         process.wait()  # Wait for the process to terminate
 
-        print("ffmpeg has been stopped")
+        logging.info("ffmpeg has been stopped")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logging.exception(f"An error occurred: {e}")
 
 
 def extract_username(input_string: str):
@@ -119,7 +120,7 @@ def get_streams_by_username(username: str) -> Optional[list[StreamInfo]]:
     access_token = data.get("data").get("streamPlaybackAccessToken")
 
     if access_token is None:
-        print("Cannot find streamer")
+        logging.error("Streamer not found")
         return None
 
     value, signature = (
@@ -151,10 +152,20 @@ def get_streams_by_username(username: str) -> Optional[list[StreamInfo]]:
 
     except HTTPError as e:
         if e.code == 404:
-            print("Streamer is offline")
+            logging.error("Streamer is offline")
+        else:
+            logging.exception(e)
+
+        return None
 
 
 def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S' 
+    )
+
     parser = argparse.ArgumentParser(
         description="Extract Twitch username and preferred quality")
     parser.add_argument('--quality', type=str, required=True,
@@ -170,6 +181,10 @@ def main():
     force_download = args.download
 
     streams = get_streams_by_username(username)
+
+    if streams is None:
+        return
+
     # Find stream with desired quality else return first
     stream = next(filter(
         lambda x: x.resolution[1] == desired_quality, streams), streams[0])
