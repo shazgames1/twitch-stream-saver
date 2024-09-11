@@ -3,11 +3,11 @@ import m3u8
 import re
 import argparse
 import subprocess
-import signal
 from urllib.request import HTTPError
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Tuple
+from pathlib import Path
 
 
 @dataclass
@@ -30,23 +30,31 @@ def ask_to_download():
     return response == 'y'
 
 
-def make_output_filename(username: str, resolution: Tuple[int, int]):
+def get_output_file_path(username: str, resolution: Tuple[int, int]) -> Path:
+    # Define the downloads folder path relative to the script's directory
+    root_directory = Path(__file__).parent.parent
+    downloads_folder = root_directory / "Downloads"
+
+    # Create the downloads folder if it doesn't exist
+    downloads_folder.mkdir(parents=True, exist_ok=True)
+
     filename = "{username} {timestamp} ({quality}p).mp4".format(
         username=username,
         timestamp=datetime.now().strftime("%Y-%m-%d %H_%M"),
         quality=str(resolution[1])
     )
+    full_path = downloads_folder / filename
 
-    return filename
+    return full_path
 
 
-def download_stream(stream_url: str, output_filename: str):
+def download_stream(stream_url: str, output_file_path: Path):
     ffmpeg_command = [
         "ffmpeg",
         "-i", stream_url,
         "-c", "copy",
         "-loglevel", "warning",
-        output_filename
+        output_file_path
     ]
 
     # Start the ffmpeg process
@@ -156,24 +164,20 @@ def main():
 
     args = parser.parse_args()
 
-    try:
-        username = args.username
-        desired_quality = int(args.quality)
+    username = args.username
+    desired_quality = int(args.quality)
 
-        streams = get_streams_by_username(username)
-        stream = next(filter(
-            lambda x: x.resolution[1] == desired_quality, streams), streams[0])
+    streams = get_streams_by_username(username)
+    # Find stream with desired quality else return first
+    stream = next(filter(
+        lambda x: x.resolution[1] == desired_quality, streams), streams[0])
 
-        # If user want to download stream, run ffmpeg else print stream url
-        if args.download or ask_to_download():
-            output_filename = make_output_filename(username, stream.resolution)
-            download_stream(stream.url, output_filename)
-        else:
-            print(str(stream.resolution[1]) + "p: " + stream.url)
-
-    except ValueError as e:
-        print(e)
-        exit(1)
+    # If user want to download stream, run ffmpeg else print stream url
+    if args.download or ask_to_download():
+        output_file_path = get_output_file_path(username, stream.resolution)
+        download_stream(stream.url, output_file_path)
+    else:
+        print(str(stream.resolution[1]) + "p: " + stream.url)
 
 
 if __name__ == "__main__":
