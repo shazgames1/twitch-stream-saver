@@ -28,7 +28,7 @@ playback_access_token_hash = "ed230aa1e33e07eebb8928504583da78a5173989fadfb1ac94
 def ask_to_download():
     response = input(
         "Do you want to download the video with ffmpeg? (y/n): ").strip().lower()
-    return response == 'y'
+    return response == "y"
 
 
 def get_output_file_path(username: str, resolution: Tuple[int, int]) -> Path:
@@ -81,7 +81,7 @@ def download_stream(stream_url: str, output_file_path: Path):
 
 def extract_username(input_string: str):
     # Check if the input is a URL and extract the username
-    url_pattern = r'https?://(www\.)?twitch\.tv/([a-zA-Z0-9_]+)'
+    url_pattern = r"https?://(www\.)?twitch\.tv/([a-zA-Z0-9_]+)"
     match = re.match(url_pattern, input_string)
     if match:
         return match.group(2)  # Return the username from the URL
@@ -90,63 +90,60 @@ def extract_username(input_string: str):
 
 
 def get_streams_by_username(username: str) -> Optional[list[StreamInfo]]:
-    response = requests.post(
-        gql_endpoint,
-        json={
-            "operationName": "PlaybackAccessToken",
-            "variables": {
-                "isLive": True,
-                "login": username,
-                "isVod": False,
-                "vodID": "",
-                "playerType": "site",
-                "platform": "web"
-            },
-            "extensions": {
-                "persistedQuery": {
-                    "version": 1,
-                    "sha256Hash": playback_access_token_hash
-                }
-            }
+    payload = {
+        "operationName": "PlaybackAccessToken",
+        "variables": {
+            "isLive": True,
+            "login": username,
+            "isVod": False,
+            "vodID": "",
+            "playerType": "site",
+            "platform": "web"
         },
-        headers={
-            "User-Agent": user_agent,
-            "Client-Id": client_id,
-            "Device-Id": device_id
+        "extensions": {
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": playback_access_token_hash
+            }
         }
-    )
+    }
 
+    headers = {
+        "User-Agent": user_agent,
+        "Client-Id": client_id,
+        "Device-Id": device_id
+    }
+
+    response = requests.post(gql_endpoint, json=payload, headers=headers)
     data = response.json()
-    access_token = data.get("data").get("streamPlaybackAccessToken")
+    access_token = data.get("data", {}).get("streamPlaybackAccessToken")
 
     if access_token is None:
         logging.error("Streamer not found")
         return None
 
-    value, signature = (
-        [access_token.get("value"),
-         access_token.get("signature")]
-    )
+    value = access_token.get("value")
+    signature = access_token.get("signature")
 
-    m3u8_url = f"https://usher.ttvnw.net/api/channel/hls/{username}.m3u8?allow_source=true&cdm=wv&fast_bread=true&platform=web&playlist_include_framerate=true&reassignments_supported=true&sig={
-        signature}&supported_codecs=av1,h264&token={value}&transcode_mode=cbr_v1"
+    m3u8_url = (
+        f"https://usher.ttvnw.net/api/channel/hls/{username}.m3u8"
+        f"&sig={signature}&supported_codecs=av1,h264&token={value}"
+        "?allow_source=true&cdm=wv&fast_bread=true&platform=web"
+        "&playlist_include_framerate=true&reassignments_supported=true"
+        "&transcode_mode=cbr_v1"
+    )
 
     # Work with m3u data
     try:
         playlist = m3u8.load(m3u8_url)
-        streams: list[StreamInfo] = []
-
-        for media_playlist in playlist.playlists:
-            media_playlist_url = media_playlist.uri
-            stream_info = media_playlist.stream_info
-
-            stream = StreamInfo(
-                resolution=stream_info.resolution,
-                frame_rate=stream_info.frame_rate,
-                url=media_playlist_url
+        streams = [
+            StreamInfo(
+                resolution=media_playlist.stream_info.resolution,
+                frame_rate=media_playlist.stream_info.frame_rate,
+                url=media_playlist.uri
             )
-
-            streams.append(stream)
+            for media_playlist in playlist.playlists
+        ]
 
         return streams
 
@@ -162,17 +159,17 @@ def get_streams_by_username(username: str) -> Optional[list[StreamInfo]]:
 def main():
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S' 
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
     )
 
     parser = argparse.ArgumentParser(
         description="Extract Twitch username and preferred quality")
-    parser.add_argument('--quality', type=str, required=True,
+    parser.add_argument("--quality", type=str, required=True,
                         help="Preferred quality (1080, 720, 480, or 360)")
-    parser.add_argument('--download', action='store_true',
+    parser.add_argument("--download", action="store_true",
                         help="Force download without asking for confirmation")
-    parser.add_argument('username', type=str, help="Twitch username or URL")
+    parser.add_argument("username", type=str, help="Twitch username or URL")
 
     args = parser.parse_args()
 
