@@ -51,6 +51,7 @@ def get_output_file_path(username: str, resolution: Tuple[int, int]) -> Path:
 def download_stream(stream_url: str, output_file_path: Path):
     ffmpeg_command = [
         "ffmpeg",
+        "-y",
         "-i", stream_url,
         "-c", "copy",
         "-loglevel", "warning",
@@ -166,6 +167,7 @@ def main():
 
     username = args.username
     desired_quality = int(args.quality)
+    force_download = args.download
 
     streams = get_streams_by_username(username)
     # Find stream with desired quality else return first
@@ -173,7 +175,7 @@ def main():
         lambda x: x.resolution[1] == desired_quality, streams), streams[0])
 
     # If user want to download stream, run ffmpeg else print stream url
-    if args.download or ask_to_download():
+    if force_download or ask_to_download():
         output_file_path = get_output_file_path(username, stream.resolution)
         download_stream(stream.url, output_file_path)
     else:

@@ -16,13 +16,20 @@ A Python program that allows users to record Twitch streams programmatically wit
    cd twitch-stream-saver
    ```
 
-2. Install the required Python packages:
+2. (Optional) Create a virtual environment:
+
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   ```
+
+3. Install the required Python packages:
 
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Ensure FFmpeg is installed and accessible from your command line. You can download it from [FFmpeg's official website](https://ffmpeg.org/download.html).
+4. Ensure FFmpeg is installed and accessible from your command line. You can download it from [FFmpeg's official website](https://ffmpeg.org/download.html).
 
 ## Usage
 
@@ -36,7 +43,7 @@ python3 src/main.py <streamer_name> --quality <quality> --download
 
 - `<streamer_name>`: The Twitch username of the streamer you want to record.
 - `--quality <quality>`: Specify the desired quality of the stream (e.g., 720, 1080).
-- `--download`: Flag to indicate that the stream should be downloaded without asking user.
+- `--download`: Flag to indicate that the stream should be downloaded without asking the user.
 
 ### Example
 
