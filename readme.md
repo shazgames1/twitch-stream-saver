@@ -1,6 +1,3 @@
-Here’s the updated documentation with the new optional argument `--download-folder`, including a note that it must be an absolute path:
-
-```markdown
 # Twitch Stream Saver
 
 A Python program that allows users to record Twitch streams programmatically without the need for screen recording. This tool uses the Twitch GraphQL API and FFmpeg to capture and download streams.
