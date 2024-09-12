@@ -1,3 +1,6 @@
+Here’s the updated documentation with the new optional argument `--download-folder`, including a note that it must be an absolute path:
+
+```markdown
 # Twitch Stream Saver
 
 A Python program that allows users to record Twitch streams programmatically without the need for screen recording. This tool uses the Twitch GraphQL API and FFmpeg to capture and download streams.
@@ -36,22 +39,23 @@ A Python program that allows users to record Twitch streams programmatically wit
 To record a Twitch stream, use the following command:
 
 ```bash
-python3 src/main.py <username or url> --download --quality <quality> --fps <fps>
+python3 src/main.py <username or url> --download --quality <quality> --fps <fps> --download-folder <path>
 ```
 
 ## Command-Line Options
 
 - `<username or url>`: The Twitch username or URL of the streamer you want to record.
 - `--download`: (Optional) Flag to indicate that the stream should be downloaded without asking the user.
-- `--quality <quality>`: (Optional) Specify the desired quality of the stream (Acceptable values are 160, 360, 480, 720, or 1080). If the desired quality not available, the highest quality of the stream will be used. If not provided, the highest quality of the stream will be used.
+- `--quality <quality>`: (Optional) Specify the desired quality of the stream (Acceptable values are 160, 360, 480, 720, or 1080). If the desired quality is not available, the highest quality of the stream will be used. If not provided, the highest quality of the stream will be used.
 - `--fps <fps>`: (Optional) Specify the desired frame rate for the output video. Acceptable values are 24, 30, or 60. If not provided, the original frame rate of the stream will be used.
+- `--download-folder <path>`: (Optional) Specify the path to the folder where the downloaded video will be saved. This must be an absolute path (for example `/home/user/Downloads` or `C:\Users\User\Downloads`).
 
 ### Examples
 
 To record the stream of the user `di_rubens` at `720`p quality with a target frame rate of `30`, run:
 
 ```bash
-python3 src/main.py di_rubens --download --quality 720 --fps 30
+python3 src/main.py di_rubens --download --quality 720 --fps 30 --download-folder "/home/user/Downloads"
 ```
 
 To record the stream using the URL of the streamer:

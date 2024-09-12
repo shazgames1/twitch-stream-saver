@@ -4,19 +4,12 @@ import re
 import argparse
 import subprocess
 import logging
-import urllib.parse
+import os
 from urllib.request import HTTPError
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Tuple
 from pathlib import Path
-
-
-@dataclass
-class StreamInfo:
-    resolution: Tuple[int, int]  # (width, height)
-    frame_rate: int
-    url: str
 
 
 gql_endpoint = "https://gql.twitch.tv/gql"
@@ -26,19 +19,39 @@ device_id = "9rgCoOahmN2k2SV5dyd4ADo5XRN9xD6A"
 playback_access_token_hash = "ed230aa1e33e07eebb8928504583da78a5173989fadfb1ac94be06a04f3cdbe9"
 
 
+@dataclass
+class StreamInfo:
+    resolution: Tuple[int, int]  # (width, height)
+    frame_rate: int
+    url: str
+
+
+def validate_download_folder(folder_path: Path) -> Path:
+    if not folder_path.exists():
+        folder_path.mkdir(parents=True, exist_ok=True)
+
+    if not folder_path.is_dir():
+        raise ValueError(f"The path {folder_path} is not a directory.")
+
+    if not os.access(folder_path, os.W_OK):
+        raise PermissionError(f"The directory {folder_path} is not writable.")
+
+    if not folder_path.is_absolute():
+        raise ValueError(f"The path {
+                         folder_path} must be an absolute path. Example: /home/user/Downloads")
+
+    return folder_path
+
+
 def ask_to_download():
     response = input(
         "Do you want to download the video with ffmpeg? (y/n): ").strip().lower()
     return response == "y"
 
 
-def get_output_file_path(username: str, resolution: Tuple[int, int], fps: int) -> Path:
-    # Define the downloads folder path relative to the script's directory
-    root_directory = Path(__file__).parent.parent
-    downloads_folder = root_directory / "Downloads"
-
+def get_output_file_path(username: str, resolution: Tuple[int, int], fps: int, download_folder: Path) -> Path:
     # Create the downloads folder if it doesn't exist
-    downloads_folder.mkdir(parents=True, exist_ok=True)
+    download_folder.mkdir(parents=True, exist_ok=True)
 
     filename = "{username} {timestamp} ({quality}p{fps}).mp4".format(
         username=username,
@@ -46,12 +59,12 @@ def get_output_file_path(username: str, resolution: Tuple[int, int], fps: int) -
         quality=str(resolution[1]),
         fps=fps
     )
-    full_path = downloads_folder / filename
+    full_path = download_folder / filename
 
     return full_path
 
 
-def download_stream(stream: StreamInfo, username: str, fps: Optional[int] = None):
+def download_stream(stream: StreamInfo, username: str, download_folder: Path, fps: Optional[int] = None):
     # Base ffmpeg command
     ffmpeg_command = [
         "ffmpeg",
@@ -71,7 +84,7 @@ def download_stream(stream: StreamInfo, username: str, fps: Optional[int] = None
     # Determine output file path
     output_file_fps = int(stream.frame_rate if fps is None else fps)
     output_file_path = get_output_file_path(
-        username, stream.resolution, fps=output_file_fps)
+        username, stream.resolution, fps=output_file_fps, download_folder=download_folder)
     ffmpeg_command.append(output_file_path)
 
     # Start the ffmpeg process
@@ -196,12 +209,23 @@ def main():
                         help="Optional frame rate (24, 30, or 60)")
     parser.add_argument("username", type=str, help="Twitch username or URL")
 
+    # Download folder path
+    parser.add_argument("--download-folder", type=str, default=str(Path(__file__).parent.parent / "Downloads"),
+                        help="Path to the download folder (default: [repository_root_folder]/Downloads)")
+
     args = parser.parse_args()
 
     username = args.username
     desired_quality = args.quality
     fps = args.fps
     force_download = args.download
+    download_folder = Path(args.download_folder)
+
+    try:
+        download_folder = validate_download_folder(download_folder)
+    except (ValueError, PermissionError) as e:
+        logging.error(e)
+        return
 
     streams = get_streams_by_username(username)
 
@@ -214,7 +238,8 @@ def main():
 
     # If user want to download stream, run ffmpeg else print stream url
     if force_download or ask_to_download():
-        download_stream(stream, username=username, fps=fps)
+        download_stream(stream, username=username, fps=fps,
+                        download_folder=download_folder)
     else:
         print(str(stream.resolution[1]) + "p: " + stream.url)
 
