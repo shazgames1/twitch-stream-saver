@@ -37,8 +37,8 @@ def validate_download_folder(folder_path: Path) -> Path:
         raise PermissionError(f"The directory {folder_path} is not writable.")
 
     if not folder_path.is_absolute():
-        raise ValueError(f"The path {
-                         folder_path} must be an absolute path. Example: /home/user/Downloads")
+        raise ValueError(
+            f"The path {folder_path} must be an absolute path. Example: /home/user/Downloads")
 
     return folder_path
 
